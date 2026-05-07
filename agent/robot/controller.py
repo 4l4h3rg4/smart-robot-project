@@ -5,6 +5,8 @@ Todos los métodos son bloqueantes por la duración indicada y luego paran.
 El heartbeat corre en segundo plano en RobotConnection.
 """
 
+import time
+
 from .connection import RobotConnection
 
 
@@ -18,6 +20,11 @@ class RobotController:
     # Servos
     SERVO_PAN = 1   # horizontal (izquierda/derecha)
     SERVO_TILT = 2  # vertical (arriba/abajo)
+
+    # Calibración de velocidad (cm/s a speed=120 — ajustar empíricamente)
+    CM_PER_SECOND_120 = 33
+    OBSTACLE_SAFE_CM = 25
+    OBSTACLE_CHECK_INTERVAL_S = 0.3  # cada cuánto verifica obstáculo en safe_forward
 
     def __init__(self, connection: RobotConnection):
         self.conn = connection
@@ -57,6 +64,35 @@ class RobotController:
         duration_s = abs(degrees) * SECONDS_PER_DEGREE
         direction = self.RIGHT if degrees > 0 else self.LEFT
         self.move(direction, speed, duration_s)
+
+    # --- Movimiento seguro con monitoreo de obstáculos ---
+
+    def safe_forward(self, speed: int = 120, duration_s: float = 0.6) -> str:
+        """Avanza monitoreando el ultrasónico durante el movimiento.
+        Divide el tiempo en tramos cortos. Si detecta obstáculo, frena
+        inmediatamente y devuelve la distancia. Retorna 'OK' si completó."""
+        interval = self.OBSTACLE_CHECK_INTERVAL_S
+        remaining = duration_s
+
+        while remaining > 0:
+            dist = self.get_distance_cm()
+            if dist < self.OBSTACLE_SAFE_CM:
+                self.stop()
+                return f"BLOQUEADO a {dist}cm"
+
+            chunk = min(interval, remaining)
+            self.move(self.FORWARD, speed, chunk)
+            time.sleep(chunk)
+            remaining -= chunk
+
+        return "OK"
+
+    def forward_distance(self, distance_cm: int, speed: int = 120) -> str:
+        """Avanza una distancia aproximada en cm, monitoreando obstáculos.
+        Convierte cm → tiempo usando CM_PER_SECOND_120 calibrado."""
+        cm_per_s = self.CM_PER_SECOND_120 * (speed / 120)
+        duration_s = distance_cm / cm_per_s
+        return self.safe_forward(speed=speed, duration_s=duration_s)
 
     # --- Servo cámara ---
 

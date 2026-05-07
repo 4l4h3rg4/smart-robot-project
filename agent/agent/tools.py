@@ -17,8 +17,8 @@ OBSTACLE_THRESHOLD_CM = 25
 
 def move_robot(direction: str, speed: int = 120, duration_ms: int = 600) -> str:
     """
-    Mueve el robot físico. Para movimientos hacia adelante verifica automáticamente
-    que no haya obstáculos antes de moverse.
+    Mueve el robot físico. Para "forward" monitorea el sensor ultrasónico cada 0.3s
+    durante TODO el movimiento y frena automáticamente si detecta obstáculo a < 25cm.
 
     Args:
         direction: "forward", "backward", "left" o "right"
@@ -33,15 +33,12 @@ def move_robot(direction: str, speed: int = 120, duration_ms: int = 600) -> str:
         return "ERROR: robot no conectado"
 
     if direction == "forward":
-        dist = ctrl.get_distance_cm()
-        if dist < OBSTACLE_THRESHOLD_CM:
-            return (
-                f"BLOQUEADO: obstáculo a {dist}cm al frente (mínimo {OBSTACLE_THRESHOLD_CM}cm). "
-                "No se ejecutó el movimiento."
-            )
+        result = ctrl.safe_forward(speed=speed, duration_s=duration_ms / 1000)
+        if result.startswith("BLOQUEADO"):
+            return result
+        return f"Movimiento ejecutado: {direction} a velocidad {speed} durante {duration_ms}ms"
 
     direction_map = {
-        "forward": ctrl.forward,
         "backward": ctrl.backward,
         "left": ctrl.turn_left,
         "right": ctrl.turn_right,
@@ -52,6 +49,26 @@ def move_robot(direction: str, speed: int = 120, duration_ms: int = 600) -> str:
 
     fn(speed=speed, duration_s=duration_ms / 1000)
     return f"Movimiento ejecutado: {direction} a velocidad {speed} durante {duration_ms}ms"
+
+
+def move_distance(meters: float, speed: int = 120) -> str:
+    """
+    Avanza una distancia en metros, monitoreando obstáculos cada 0.3s.
+    Se detiene automáticamente si detecta algo a menos de 25cm.
+    Usar para órdenes como "avanza 2 metros" o "ve 1.5 metros adelante".
+
+    Args:
+        meters: distancia a avanzar en metros (ej: 2.0 = 2 metros)
+        speed: velocidad 0-255 (default 120)
+
+    Returns:
+        "OK" si completó, o "BLOQUEADO a Xcm" si encontró obstáculo.
+    """
+    ctrl = get_controller()
+    if not ctrl:
+        return "ERROR: robot no conectado"
+    distance_cm = int(meters * 100)
+    return ctrl.forward_distance(distance_cm=distance_cm, speed=speed)
 
 
 def stop_robot() -> str:
