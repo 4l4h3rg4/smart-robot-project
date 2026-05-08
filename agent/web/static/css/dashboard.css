@@ -297,6 +297,70 @@ body {
 .servo-info strong { color: var(--text-primary); }
 
 /* ============================================================
+   BATTERY INDICATOR
+   ============================================================ */
+.battery-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.75rem;
+}
+.battery-label { color: var(--text-secondary); white-space: nowrap; }
+.battery-bar-container {
+  flex: 1;
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.battery-bar {
+  height: 100%;
+  background: #374151;
+  border-radius: 4px;
+  transition: width 0.5s ease, background 0.3s ease;
+}
+.battery-text {
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ============================================================
+   STATUS BADGES
+   ============================================================ */
+.status-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 14px 10px;
+}
+.check-row {
+  display: flex;
+  align-items: center;
+  font-size: 0.72rem;
+}
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+.badge.ok { background: rgba(0,230,118,0.15); color: var(--success); }
+.badge.off { background: rgba(136,153,170,0.15); color: var(--text-secondary); }
+.badge.on { background: rgba(0,180,216,0.2); color: var(--accent); }
+.badge.danger { background: rgba(255,82,82,0.2); color: var(--danger); animation: pulse-badge 1s infinite; }
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ============================================================
    BOTTOM BAR
    ============================================================ */
 .bottom-bar {

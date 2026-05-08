@@ -60,6 +60,18 @@ async def ws_endpoint(ws: WebSocket):
             elif msg_type == "ping":
                 await ws.send_json({"type": "pong", "data": {}})
 
+            elif msg_type == "face_detect":
+                enabled = data.get("enabled", True)
+                loop = asyncio.get_event_loop()
+                ok = await loop.run_in_executor(None, state.toggle_face_detect, enabled)
+                await ws.send_json({"type": "face_detect_result", "data": {"ok": ok, "enabled": enabled}})
+
+            elif msg_type == "cam_led":
+                intensity = data.get("intensity", 0)
+                loop = asyncio.get_event_loop()
+                ok = await loop.run_in_executor(None, state.set_cam_led, intensity)
+                await ws.send_json({"type": "cam_led_result", "data": {"ok": ok, "intensity": intensity}})
+
             else:
                 await ws.send_json({"type": "error", "data": {"message": f"Tipo desconocido: {msg_type}"}})
 

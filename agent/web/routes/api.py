@@ -2,6 +2,7 @@
 API REST — endpoints síncronos y asíncronos para control del robot.
 """
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, HTTPException
@@ -118,3 +119,65 @@ async def sensors():
         raise HTTPException(status_code=503, detail="Robot no conectado.")
     data = await state.poll_sensors()
     return {"ok": True, "data": data}
+
+
+# ------------------------------------------------------------
+#  Batería
+# ------------------------------------------------------------
+
+@router.get("/battery")
+async def battery():
+    if not state.connected:
+        raise HTTPException(status_code=503, detail="Robot no conectado.")
+    return {
+        "ok": True,
+        "percentage": state.battery_pct,
+        "status": state.battery_status,
+    }
+
+
+# ------------------------------------------------------------
+#  Control de cámara
+# ------------------------------------------------------------
+
+@router.post("/camera/face-detect")
+async def camera_face_detect(enabled: bool = True):
+    ok = state.toggle_face_detect(enabled)
+    return {"ok": ok, "face_detect_enabled": enabled}
+
+
+@router.post("/camera/led")
+async def camera_led(intensity: int = 0):
+    ok = state.set_cam_led(intensity)
+    return {"ok": ok, "led_intensity": intensity}
+
+
+@router.post("/camera/quality")
+async def camera_quality(quality: int = 10):
+    ok = state.set_cam_quality(quality)
+    return {"ok": ok, "quality": quality}
+
+
+# ------------------------------------------------------------
+#  Modos autónomos
+# ------------------------------------------------------------
+
+@router.post("/mode")
+async def set_mode(mode: str = "stop"):
+    if not state.connected:
+        raise HTTPException(status_code=503, detail="Robot no conectado.")
+    valid = {"tracking", "obstacle", "follow", "stop"}
+    if mode not in valid:
+        raise HTTPException(status_code=400, detail=f"Modo inválido. Usa: {valid}")
+    if mode == "stop":
+        await state.stop_robot()
+        return {"ok": True, "mode": "stop"}
+    loop = asyncio.get_event_loop()
+    mode_map = {
+        "tracking": state.ctrl.set_tracking_mode,
+        "obstacle": state.ctrl.set_obstacle_mode,
+        "follow": state.ctrl.set_follow_mode,
+    }
+    await loop.run_in_executor(None, mode_map[mode])
+    state._add_activity("system", f"Modo autónomo: {mode}")
+    return {"ok": True, "mode": mode}

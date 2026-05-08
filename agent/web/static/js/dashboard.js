@@ -153,6 +153,53 @@
     updateSensorUI(data);
     servoPan.textContent = data.servo_pan !== undefined ? data.servo_pan : '--';
     servoTilt.textContent = data.servo_tilt !== undefined ? data.servo_tilt : '--';
+    updateBatteryUI(data);
+    updateStatusBadges(data);
+  }
+
+  function updateBatteryUI(data) {
+    const bar = document.getElementById('battery-bar');
+    const text = document.getElementById('battery-text');
+    if (data.battery_pct !== undefined && data.battery_pct !== null) {
+      const pct = data.battery_pct;
+      bar.style.width = pct + '%';
+      text.textContent = pct + '%';
+      if (data.battery_status === 'critical') {
+        bar.style.background = '#ef4444';
+        text.style.color = '#ef4444';
+      } else if (data.battery_status === 'low') {
+        bar.style.background = '#f59e0b';
+        text.style.color = '#f59e0b';
+      } else {
+        bar.style.background = '#22c55e';
+        text.style.color = '#22c55e';
+      }
+    } else {
+      bar.style.width = '100%';
+      bar.style.background = '#374151';
+      text.textContent = '--';
+      text.style.color = '#9ca3af';
+    }
+  }
+
+  function updateStatusBadges(data) {
+    const fdBadge = document.getElementById('face-detect-badge');
+    if (data.face_detect_enabled) {
+      fdBadge.className = 'badge on';
+      fdBadge.textContent = '👤 Face: ON';
+    } else {
+      fdBadge.className = 'badge off';
+      fdBadge.textContent = '👤 Face: OFF';
+    }
+
+    const groundBadge = document.getElementById('ground-badge');
+    if (data.is_lifted) {
+      groundBadge.className = 'badge danger';
+      groundBadge.textContent = '⚠️ LEVANTADO';
+    } else {
+      groundBadge.className = 'badge ok';
+      groundBadge.textContent = '📐 En suelo';
+    }
   }
 
   function updateSensorUI(data) {

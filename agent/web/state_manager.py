@@ -59,6 +59,13 @@ class RobotStateManager:
         self.servo_pan = 90
         self.servo_tilt = 90
 
+        # Estado extendido
+        self.battery_pct: Optional[float] = None
+        self.battery_status: str = "unknown"
+        self.face_detect_enabled: bool = False
+        self.is_lifted: bool = False
+        self.camera_led: int = 0
+
         # Actividad del agente
         self.activity_log: list[dict] = []
         self.max_activity = 100
@@ -159,6 +166,11 @@ class RobotStateManager:
         self.ir_left = None
         self.ir_mid = None
         self.ir_right = None
+        self.battery_pct = None
+        self.battery_status = "unknown"
+        self.face_detect_enabled = False
+        self.is_lifted = False
+        self.camera_led = 0
 
         # Limpiar agent.robot_state
         import agent.robot_state as robot_state
@@ -216,6 +228,11 @@ class RobotStateManager:
             "ir_right": self.ir_right,
             "servo_pan": self.servo_pan,
             "servo_tilt": self.servo_tilt,
+            "battery_pct": self.battery_pct,
+            "battery_status": self.battery_status,
+            "face_detect_enabled": self.face_detect_enabled,
+            "is_lifted": self.is_lifted,
+            "camera_led": self.camera_led,
         }
 
     # ============================================================
@@ -241,6 +258,18 @@ class RobotStateManager:
                 self.ir_right = ir.get("right")
         except Exception as e:
             logger.warning(f"Error leyendo IR: {e}")
+
+        try:
+            batt = await loop.run_in_executor(None, self._ctrl.estimate_battery_pct)
+            self.battery_pct = batt.get("percentage")
+            self.battery_status = batt.get("status", "unknown")
+        except Exception as e:
+            logger.warning(f"Error leyendo batería: {e}")
+
+        try:
+            self.is_lifted = await loop.run_in_executor(None, self._ctrl.is_lifted)
+        except Exception as e:
+            logger.warning(f"Error leyendo ground sensor: {e}")
 
         await self._broadcast_state()
         return self._build_state_payload()
@@ -357,6 +386,26 @@ class RobotStateManager:
         except Exception as e:
             logger.warning(f"Error capturando frame: {e}")
             return None
+
+    # --- Control de cámara ---
+
+    def toggle_face_detect(self, enabled: bool) -> bool:
+        from robot.camera import set_face_detect
+        ok = set_face_detect(enabled, ip=self.robot_ip)
+        if ok:
+            self.face_detect_enabled = enabled
+        return ok
+
+    def set_cam_led(self, intensity: int) -> bool:
+        from robot.camera import set_led_intensity
+        ok = set_led_intensity(intensity, ip=self.robot_ip)
+        if ok:
+            self.camera_led = intensity
+        return ok
+
+    def set_cam_quality(self, quality: int) -> bool:
+        from robot.camera import set_camera_quality
+        return set_camera_quality(quality, ip=self.robot_ip)
 
     # ============================================================
     #  Log de actividad

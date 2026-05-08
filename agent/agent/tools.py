@@ -188,3 +188,257 @@ def scan_environment() -> str:
         time.sleep(0.5)
     ctrl.set_pan(90)
     return f"Escaneo completado: {len(positions)} posiciones revisadas (pan 0°→180°→90°)"
+
+
+# ================================================================
+#  Movimiento avanzado
+# ================================================================
+
+def move_diagonal(direction: str, speed: int = 120, duration_ms: int = 600) -> str:
+    """
+    Mueve el robot en diagonal usando 8 direcciones (joystick mode).
+    Para maniobras finas o posicionamiento preciso.
+
+    Args:
+        direction: "left_forward", "right_forward", "left_backward", "right_backward"
+        speed: velocidad 0-255
+        duration_ms: duración en milisegundos
+
+    Returns:
+        Descripción de la acción ejecutada.
+    """
+    ctrl = get_controller()
+    if not ctrl:
+        return "ERROR: robot no conectado"
+    try:
+        ctrl.joystick_move(direction, speed)
+        time.sleep(duration_ms / 1000)
+        ctrl.stop()
+        return f"Movimiento diagonal ejecutado: {direction} a velocidad {speed} durante {duration_ms}ms"
+    except ValueError as e:
+        return f"ERROR: {e}"
+
+
+def arc_turn(direction: str, tightness: str = "medium", speed: int = 120,
+             duration_ms: int = 800) -> str:
+    """
+    Giro en arco (curva suave) en vez de giro brusco sobre el eje.
+    Más natural para navegación en espacios abiertos.
+
+    Args:
+        direction: "left" o "right"
+        tightness: "tight" (cerrado), "medium", "wide" (amplio)
+        speed: velocidad base
+        duration_ms: duración en milisegundos
+
+    Returns:
+        Descripción de la acción ejecutada.
+    """
+    ctrl = get_controller()
+    if not ctrl:
+        return "ERROR: robot no conectado"
+    radius_map = {"tight": 0.3, "medium": 0.6, "wide": 0.85}
+    radius = radius_map.get(tightness, 0.6)
+    ctrl.arc_turn(direction, radius, speed, duration_ms / 1000)
+    return f"Giro en arco: {direction} ({tightness}) a velocidad {speed}"
+
+
+# ================================================================
+#  Sensores y seguridad
+# ================================================================
+
+def is_robot_lifted() -> dict:
+    """
+    Detecta si el robot fue levantado del suelo.
+    Si es True, detener todo inmediatamente por seguridad.
+
+    Returns:
+        Dict con 'lifted' (bool) y mensaje descriptivo.
+    """
+    ctrl = get_controller()
+    if not ctrl:
+        return {"error": "robot no conectado"}
+    lifted = ctrl.is_lifted()
+    return {
+        "lifted": lifted,
+        "message": "ROBOT LEVANTADO DEL SUELO" if lifted else "Robot en el suelo",
+    }
+
+
+def set_line_tracking_sensitivity(threshold: int) -> str:
+    """
+    Ajusta la sensibilidad de seguimiento de línea para el modo tracking.
+    Valores bajos = más sensible a líneas tenues.
+
+    Args:
+        threshold: 50 (muy sensible) a 1000 (poco sensible)
+
+    Returns:
+        Confirmación del ajuste.
+    """
+    ctrl = get_controller()
+    if not ctrl:
+        return "ERROR: robot no conectado"
+    ctrl.set_tracking_sensitivity(threshold)
+    return f"Sensibilidad de tracking ajustada a {threshold}"
+
+
+def activate_autonomous_mode(mode: str) -> str:
+    """
+    Activa modos autónomos del firmware del robot.
+    El robot ejecuta el modo por sí solo hasta que se le ordene parar.
+
+    Args:
+        mode: "tracking" (seguir línea negra), "obstacle" (evitar obstáculos),
+              "follow" (seguir objeto/persona)
+
+    Returns:
+        Confirmación del modo activado.
+    """
+    ctrl = get_controller()
+    if not ctrl:
+        return "ERROR: robot no conectado"
+    mode_map = {
+        "tracking": ctrl.set_tracking_mode,
+        "obstacle": ctrl.set_obstacle_mode,
+        "follow": ctrl.set_follow_mode,
+    }
+    fn = mode_map.get(mode)
+    if not fn:
+        return f"ERROR: modo '{mode}' desconocido. Usa: tracking, obstacle, follow"
+    fn()
+    return f"Modo autónomo activado: {mode}"
+
+
+# ================================================================
+#  Cámara y visión
+# ================================================================
+
+def enable_face_detection(enabled: bool = True) -> str:
+    """
+    Activa o desactiva la detección de rostros integrada en la cámara ESP32.
+    Cuando está activo, la cámara marca rectángulos en los rostros detectados.
+
+    Args:
+        enabled: True para activar, False para desactivar
+
+    Returns:
+        Confirmación del cambio.
+    """
+    from robot.camera import set_face_detect
+    ok = set_face_detect(enabled)
+    if ok:
+        return f"Detección de rostros {'activada' if enabled else 'desactivada'}"
+    return "ERROR: no se pudo cambiar la detección de rostros"
+
+
+def toggle_camera_led(intensity: int = 0) -> str:
+    """
+    Controla el LED de la cámara. 0 = apagado, 255 = máximo brillo.
+    Útil para exploración en baja luz o ahorro de batería.
+
+    Args:
+        intensity: 0-255
+
+    Returns:
+        Confirmación.
+    """
+    from robot.camera import set_led_intensity
+    ok = set_led_intensity(intensity)
+    return f"LED de cámara ajustado a {intensity}" if ok else "ERROR ajustando LED"
+
+
+def set_camera_settings(quality: int = -1, brightness: int = 0,
+                        contrast: int = 0) -> str:
+    """
+    Ajusta parámetros de la cámara para optimizar la visión.
+
+    Args:
+        quality: calidad JPEG 0-63 (-1 = no cambiar). Menor = mejor calidad.
+        brightness: brillo -2 a 2
+        contrast: contraste -2 a 2
+
+    Returns:
+        Resumen de cambios aplicados.
+    """
+    from robot.camera import set_camera_quality, set_camera_brightness, set_camera_contrast
+    changes = []
+    if quality >= 0:
+        set_camera_quality(quality)
+        changes.append(f"quality={quality}")
+    if brightness != 0:
+        set_camera_brightness(brightness)
+        changes.append(f"brightness={brightness}")
+    if contrast != 0:
+        set_camera_contrast(contrast)
+        changes.append(f"contrast={contrast}")
+    return f"Cámara ajustada: {', '.join(changes)}" if changes else "Sin cambios"
+
+
+def scan_and_analyze(question: str) -> dict:
+    """
+    Escanea el entorno rotando la cámara en 5 posiciones (0°→180°),
+    capturando un frame en cada una. Devuelve frames codificados
+    para que la IA los analice visualmente.
+
+    Args:
+        question: qué buscar o analizar en las imágenes
+
+    Returns:
+        Dict con lista de frames base64, sus ángulos pan, y la pregunta.
+    """
+    ctrl = get_controller()
+    if not ctrl:
+        return {"error": "robot no conectado"}
+
+    frames = []
+    for pan in [0, 45, 90, 135, 180]:
+        ctrl.set_pan(pan)
+        time.sleep(0.5)
+        frame = capture_frame()
+        b64 = base64.b64encode(frame_to_bytes(frame, format="JPEG")).decode()
+        frames.append({"pan": pan, "image_base64": b64})
+
+    ctrl.set_pan(90)
+    return {"frames": frames, "question": question}
+
+
+# ================================================================
+#  Estado del robot
+# ================================================================
+
+def get_robot_status() -> dict:
+    """
+    Obtiene el estado completo del robot: batería estimada, sensores,
+    cámara y estado de seguridad.
+
+    Usar al inicio de cualquier tarea para verificar condiciones,
+    o cuando el usuario pregunta "¿cómo está el robot?".
+
+    Returns:
+        Dict con todos los indicadores de estado.
+    """
+    ctrl = get_controller()
+    if not ctrl:
+        return {"error": "robot no conectado"}
+
+    distance = ctrl.get_distance_cm()
+    ir = ctrl.get_ir_sensors()
+    battery = ctrl.estimate_battery_pct()
+    lifted = ctrl.is_lifted()
+
+    from robot.camera import get_camera_status
+    cam_status = get_camera_status()
+
+    return {
+        "distance_cm": distance,
+        "ir_sensors": ir,
+        "battery": battery,
+        "is_lifted": lifted,
+        "camera": {
+            "face_detect": cam_status.get("face_detect", 0) == 1,
+            "quality": cam_status.get("quality", "?"),
+            "led_intensity": cam_status.get("led_intensity", 0),
+            "framesize": cam_status.get("framesize", "?"),
+        },
+    }

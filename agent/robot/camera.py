@@ -1,12 +1,15 @@
 """
 Acceso a la cámara del ESP32-WROVER del robot.
 
-Dos modos:
-- capture_frame(): GET /capture → JPEG único (simple, bajo overhead)
-- MjpegStream: lee el stream continuo de :81/stream
+Modos:
+- capture_frame(): GET /capture → JPEG único
+- MjpegStream: stream MJPEG continuo (:81/stream)
+- Control: face_detect, quality, led_intensity vía /control
+- Status: estado completo de la cámara vía /status
 """
 
 import io
+import logging
 import os
 import threading
 import time
@@ -16,9 +19,12 @@ import requests
 from PIL import Image
 
 
+logger = logging.getLogger("robot.camera")
 ROBOT_IP = os.getenv("ROBOT_IP", "192.168.4.1")
 CAPTURE_URL = f"http://{ROBOT_IP}/capture"
 STREAM_URL = f"http://{ROBOT_IP}:81/stream"
+CONTROL_URL = f"http://{ROBOT_IP}/control"
+STATUS_URL = f"http://{ROBOT_IP}/status"
 STREAM_BOUNDARY = b"123456789000000000000987654321"
 
 
@@ -82,4 +88,69 @@ class MjpegStream:
                                 pass
             except Exception:
                 if self._running:
-                    time.sleep(1)  # reconectar
+                    time.sleep(1)
+
+
+# ------------------------------------------------------------
+#  Control de cámara (ESP32 /control endpoint)
+# ------------------------------------------------------------
+
+def _camera_control(var: str, val: int, ip: str = ROBOT_IP) -> bool:
+    """Envía un comando de control a la cámara del ESP32."""
+    try:
+        url = f"http://{ip}/control"
+        resp = requests.get(url, params={"var": var, "val": val}, timeout=3)
+        return resp.status_code == 200
+    except Exception as e:
+        logger.warning(f"Camera control '{var}={val}' falló: {e}")
+        return False
+
+
+def set_face_detect(enabled: bool = True, ip: str = ROBOT_IP) -> bool:
+    """Activa/desactiva detección de rostros en el ESP32."""
+    return _camera_control("face_detect", 1 if enabled else 0, ip)
+
+
+def set_face_recognize(enabled: bool = True, ip: str = ROBOT_IP) -> bool:
+    """Activa/desactiva reconocimiento facial en el ESP32."""
+    return _camera_control("face_recognize", 1 if enabled else 0, ip)
+
+
+def set_camera_quality(quality: int, ip: str = ROBOT_IP) -> bool:
+    """Ajusta calidad JPEG (0-63, menor = mejor calidad)."""
+    quality = max(0, min(63, quality))
+    return _camera_control("quality", quality, ip)
+
+
+def set_camera_brightness(brightness: int, ip: str = ROBOT_IP) -> bool:
+    """Ajusta brillo de cámara (-2 a 2)."""
+    brightness = max(-2, min(2, brightness))
+    return _camera_control("brightness", brightness, ip)
+
+
+def set_camera_contrast(contrast: int, ip: str = ROBOT_IP) -> bool:
+    """Ajusta contraste de cámara (-2 a 2)."""
+    contrast = max(-2, min(2, contrast))
+    return _camera_control("contrast", contrast, ip)
+
+
+def set_camera_framesize(framesize: int, ip: str = ROBOT_IP) -> bool:
+    """Ajusta resolución. 9=SVGA(800x600), 10=XGA(1024x768), etc."""
+    return _camera_control("framesize", framesize, ip)
+
+
+def set_led_intensity(intensity: int, ip: str = ROBOT_IP) -> bool:
+    """Controla intensidad del LED de flash (0-255)."""
+    intensity = max(0, min(255, intensity))
+    return _camera_control("led_intensity", intensity, ip)
+
+
+def get_camera_status(ip: str = ROBOT_IP) -> dict:
+    """Obtiene estado completo de la cámara (face_detect, quality, etc.)."""
+    try:
+        resp = requests.get(f"http://{ip}/status", timeout=3)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        logger.warning(f"Error obteniendo status de cámara: {e}")
+        return {}

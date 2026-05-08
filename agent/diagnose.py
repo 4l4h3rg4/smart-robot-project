@@ -11,6 +11,7 @@ import os
 import socket
 import subprocess
 import sys
+import time
 
 from dotenv import load_dotenv
 
@@ -32,7 +33,7 @@ def fail(msg: str, hint: str = "") -> None:
             print(f"      → {line}")
 
 
-TOTAL = 8
+TOTAL = 14
 
 
 def main() -> int:
@@ -181,6 +182,117 @@ def main() -> int:
     except Exception as e:
         fail(f"Error: {e}")
         errors += 1
+
+    # 9. Joystick 8 direcciones (N:102)
+    check(9, TOTAL, "Joystick 8 direcciones (N:102)...")
+    sock = None
+    try:
+        sock = socket.create_connection((ip, 100), timeout=4)
+        sock.settimeout(1)
+        ok_count = 0
+        for d in range(1, 9):
+            cmd = json.dumps({"N": 102, "D1": d, "D2": 0}, separators=(",", ":")).encode()
+            sock.send(cmd)
+            time.sleep(0.1)
+            ok_count += 1
+        ok(f"8 direcciones enviadas (D1=1..8)")
+    except Exception as e:
+        fail(f"Error: {e}")
+        errors += 1
+    finally:
+        if sock:
+            try: sock.close()
+            except: pass
+
+    # 10. Differential Drive (N:4)
+    check(10, TOTAL, "Differential drive (N:4)...")
+    try:
+        sock = socket.create_connection((ip, 100), timeout=4)
+        sock.settimeout(1)
+        cmd = json.dumps({"N": 4, "D1": 100, "D2": 150}, separators=(",", ":")).encode()
+        sock.send(cmd)
+        time.sleep(0.2)
+        stop_cmd = json.dumps({"N": 100}, separators=(",", ":")).encode()
+        sock.send(stop_cmd)
+        ok("Velocidad asimétrica enviada (L=100, R=150)")
+    except Exception as e:
+        fail(f"Error: {e}")
+        errors += 1
+    finally:
+        if sock:
+            try: sock.close()
+            except: pass
+
+    # 11. Ground detection (N:23)
+    check(11, TOTAL, "Ground detection (N:23)...")
+    try:
+        import requests as req
+        sock = socket.create_connection((ip, 100), timeout=4)
+        sock.settimeout(1)
+        # Enviar heartbeat primero
+        sock.send(b"{Heartbeat}")
+        time.sleep(0.1)
+        try: sock.recv(256)  # consumir respuesta heartbeat
+        except: pass
+        cmd = json.dumps({"H": 1, "N": 23}, separators=(",", ":")).encode()
+        sock.send(cmd)
+        time.sleep(0.3)
+        try:
+            resp = sock.recv(256).decode(errors="replace")
+            ok(f"Respuesta: {resp.strip()}")
+        except socket.timeout:
+            ok("Sin respuesta (normal si en suelo)")
+    except Exception as e:
+        fail(f"Error: {e}")
+        errors += 1
+    finally:
+        if sock:
+            try: sock.close()
+            except: pass
+
+    # 12. Camera face detect control
+    check(12, TOTAL, "Camera face detect control...")
+    try:
+        import requests as req
+        r = req.get(f"http://{ip}/control", params={"var": "face_detect", "val": 0}, timeout=4)
+        if r.status_code == 200:
+            ok("/control endpoint responde")
+        else:
+            print(f"⚠  HTTP {r.status_code} (puede no soportar face_detect)")
+    except Exception as e:
+        print(f"⚠  /control no disponible: {e} (puede no estar en este firmware)")
+
+    # 13. Camera LED control
+    check(13, TOTAL, "Camera LED control...")
+    try:
+        import requests as req
+        r = req.get(f"http://{ip}/control", params={"var": "led_intensity", "val": 0}, timeout=4)
+        if r.status_code == 200:
+            ok("LED intensity control responde")
+        else:
+            print(f"⚠  HTTP {r.status_code}")
+    except Exception as e:
+        print(f"⚠  LED control no disponible: {e}")
+
+    # 14. Smooth camera rotation (N:106)
+    check(14, TOTAL, "Smooth camera rotation (N:106)...")
+    try:
+        sock = socket.create_connection((ip, 100), timeout=4)
+        sock.settimeout(1)
+        for direction in range(1, 5):
+            cmd = json.dumps({"N": 106, "D1": direction}, separators=(",", ":")).encode()
+            sock.send(cmd)
+            time.sleep(0.15)
+        stop_cmd = json.dumps({"N": 100}, separators=(",", ":")).encode()
+        sock.send(stop_cmd)
+        ok("Rotación cam UP/DOWN/LEFT/RIGHT enviada")
+    except Exception as e:
+        fail(f"Error: {e}")
+        errors += 1
+    finally:
+        if sock:
+            try: sock.close()
+            except: pass
 
     # Resumen
     print("═" * 52)
