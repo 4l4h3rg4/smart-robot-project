@@ -185,20 +185,20 @@
   function updateStatusBadges(data) {
     const fdBadge = document.getElementById('face-detect-badge');
     if (data.face_detect_enabled) {
-      fdBadge.className = 'badge on';
-      fdBadge.textContent = '👤 Face: ON';
+      fdBadge.className = 'status-tag tag-on';
+      fdBadge.textContent = 'Face: ON';
     } else {
-      fdBadge.className = 'badge off';
-      fdBadge.textContent = '👤 Face: OFF';
+      fdBadge.className = 'status-tag tag-off';
+      fdBadge.textContent = 'Face: OFF';
     }
 
     const groundBadge = document.getElementById('ground-badge');
     if (data.is_lifted) {
-      groundBadge.className = 'badge danger';
-      groundBadge.textContent = '⚠️ LEVANTADO';
+      groundBadge.className = 'status-tag tag-danger';
+      groundBadge.textContent = 'LEVANTADO';
     } else {
-      groundBadge.className = 'badge ok';
-      groundBadge.textContent = '📐 En suelo';
+      groundBadge.className = 'status-tag tag-ok';
+      groundBadge.textContent = 'En suelo';
     }
   }
 

@@ -46,21 +46,76 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 20px;
+  padding: 8px 20px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
+  gap: 16px;
+  min-height: 56px;
 }
 
-.top-left h1 { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
-.top-left .subtitle { font-size: 0.75rem; color: var(--text-secondary); margin-left: 8px; }
+.top-left { flex-shrink: 0; }
+.top-left h1 { font-size: 1rem; font-weight: 700; color: var(--accent); margin: 0; }
+.top-left .subtitle { font-size: 0.68rem; color: var(--text-secondary); display: block; }
 
 .top-center {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 .connection-panel { display: flex; gap: 6px; align-items: center; }
+
+/* --- Top right: status + connection badge --- */
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.top-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.top-battery {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.top-battery .battery-icon { font-size: 0.75rem; flex-shrink: 0; }
+.top-battery .battery-bar-container {
+  width: 70px;
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.top-battery .battery-bar {
+  height: 100%;
+  border-radius: 3px;
+  background: #374151;
+  transition: width 0.5s ease, background 0.3s ease;
+}
+.top-battery .battery-text {
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  min-width: 34px;
+  text-align: right;
+}
+.top-tags {
+  display: flex;
+  gap: 4px;
+}
+.top-tags .status-tag {
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
 
 #ip-input {
   padding: 6px 10px;
@@ -267,97 +322,73 @@ body {
 .sensor-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: 6px;
+  padding: 8px 14px;
 }
 .sensor-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 10px;
+  padding: 8px 6px;
   text-align: center;
 }
-.sensor-icon { font-size: 1.2rem; }
-.sensor-label { font-size: 0.68rem; color: var(--text-secondary); margin: 2px 0; }
+.sensor-icon { font-size: 1rem; }
+.sensor-label { font-size: 0.65rem; color: var(--text-secondary); margin: 1px 0; }
 .sensor-value {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: var(--accent);
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
-.sensor-unit { font-size: 0.65rem; color: var(--text-muted); }
+.sensor-unit { font-size: 0.6rem; color: var(--text-muted); }
+
+/* --- Servo info --- */
 .servo-info {
   display: flex;
   justify-content: space-around;
-  padding: 8px 14px 10px;
-  font-size: 0.75rem;
+  padding: 8px 14px 4px;
+  font-size: 0.72rem;
   color: var(--text-secondary);
   border-top: 1px solid rgba(255,255,255,0.04);
 }
 .servo-info strong { color: var(--text-primary); }
 
 /* ============================================================
-   BATTERY INDICATOR
+   STATUS TAGS (usados en top bar y donde sea)
    ============================================================ */
-.battery-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-top: 1px solid rgba(255,255,255,0.04);
-  font-size: 0.75rem;
-}
-.battery-label { color: var(--text-secondary); white-space: nowrap; }
-.battery-bar-container {
-  flex: 1;
-  height: 8px;
-  background: var(--bg-input);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.battery-bar {
-  height: 100%;
-  background: #374151;
-  border-radius: 4px;
-  transition: width 0.5s ease, background 0.3s ease;
-}
-.battery-text {
-  font-weight: 700;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.75rem;
-  min-width: 40px;
-  text-align: right;
-}
-
-/* ============================================================
-   STATUS BADGES
-   ============================================================ */
-.status-checks {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 0 14px 10px;
-}
-.check-row {
-  display: flex;
-  align-items: center;
-  font-size: 0.72rem;
-}
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
+.status-tag {
+  text-align: center;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.68rem;
   font-weight: 600;
-  font-size: 0.7rem;
+  line-height: 1.3;
 }
-.badge.ok { background: rgba(0,230,118,0.15); color: var(--success); }
-.badge.off { background: rgba(136,153,170,0.15); color: var(--text-secondary); }
-.badge.on { background: rgba(0,180,216,0.2); color: var(--accent); }
-.badge.danger { background: rgba(255,82,82,0.2); color: var(--danger); animation: pulse-badge 1s infinite; }
+.tag-off {
+  background: rgba(136,153,170,0.12);
+  color: var(--text-muted);
+}
+.tag-on {
+  background: rgba(0,180,216,0.18);
+  color: var(--accent);
+}
+.tag-ok {
+  background: rgba(0,230,118,0.12);
+  color: var(--success);
+}
+.tag-warn {
+  background: rgba(255,171,64,0.18);
+  color: var(--warning);
+}
+.tag-danger {
+  background: rgba(255,82,82,0.2);
+  color: var(--danger);
+  animation: pulse-tag 1s infinite;
+}
 
-@keyframes pulse-badge {
+@keyframes pulse-tag {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  50% { opacity: 0.55; }
 }
 
 /* ============================================================
@@ -380,6 +411,15 @@ body {
    RESPONSIVE
    ============================================================ */
 @media (max-width: 900px) {
+  .top-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .top-right {
+    width: 100%;
+    justify-content: space-between;
+  }
   .dashboard {
     grid-template-columns: 1fr;
     max-height: none;

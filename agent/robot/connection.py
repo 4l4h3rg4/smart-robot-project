@@ -70,31 +70,53 @@ class RobotConnection:
                 raise RuntimeError("No hay conexión con el robot")
             self._sock.send(payload)
 
+    def _drain_socket(self) -> None:
+        """Consume datos pendientes en el buffer de recepción (respuestas
+        acumuladas de fire() que nadie leyó). Evita que contaminen el
+        siguiente send()."""
+        try:
+            self._sock.settimeout(0.05)
+            drained = 0
+            while True:
+                chunk = self._sock.recv(4096)
+                if not chunk:
+                    break
+                drained += len(chunk)
+            if drained:
+                print(f"[DEBUG drain] descartados {drained} bytes pendientes", flush=True)
+        except (socket.timeout, BlockingIOError, OSError):
+            pass
+        finally:
+            self._sock.settimeout(0.3)
+
     def send(self, cmd: dict) -> Optional[str]:
         """Envía un comando JSON y espera respuesta (solo para consultas de sensores).
-        Descarta los {Heartbeat} que el robot envía periódicamente."""
+        Descarta los {Heartbeat} que el robot envía periódicamente.
+        Drena el buffer antes de enviar y suelta el lock para no bloquear heartbeat."""
         payload = self._encode(cmd)
         print(f"[DEBUG send ] {payload}", flush=True)
         with self._lock:
             if not self._sock:
                 raise RuntimeError("No hay conexión con el robot")
+            self._drain_socket()
             self._sock.send(payload)
-            try:
-                while True:
-                    resp = self._sock.recv(256)
-                    decoded = resp.decode(errors="replace").strip()
-                    if "{Heartbeat}" in decoded:
-                        cleaned = decoded.replace("{Heartbeat}", "").strip()
-                        if cleaned:
-                            print(f"[DEBUG recv ] {cleaned!r}", flush=True)
-                            return cleaned
-                        # solo heartbeats, seguir leyendo
-                        continue
-                    print(f"[DEBUG recv ] {decoded!r}", flush=True)
-                    return decoded
-            except socket.timeout:
-                print("[DEBUG recv ] timeout — sin respuesta", flush=True)
-                return None
+        # Lock liberado — el heartbeat puede enviar mientras esperamos respuesta
+        try:
+            while True:
+                resp = self._sock.recv(256)
+                decoded = resp.decode(errors="replace").strip()
+                if "{Heartbeat}" in decoded:
+                    cleaned = decoded.replace("{Heartbeat}", "").strip()
+                    if cleaned:
+                        print(f"[DEBUG recv ] {cleaned!r}", flush=True)
+                        return cleaned
+                    # solo heartbeats, seguir leyendo
+                    continue
+                print(f"[DEBUG recv ] {decoded!r}", flush=True)
+                return decoded
+        except socket.timeout:
+            print("[DEBUG recv ] timeout — sin respuesta", flush=True)
+            return None
 
     def send_raw(self, raw: bytes) -> None:
         with self._lock:

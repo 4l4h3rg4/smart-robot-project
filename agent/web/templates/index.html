@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
 <body>
-  <header class="top-bar">
+   <header class="top-bar">
     <div class="top-left">
       <h1>Smart Robot Monitor</h1>
       <span class="subtitle">ELEGOO Smart Robot Car V4.0</span>
@@ -20,6 +20,19 @@
       </div>
     </div>
     <div class="top-right">
+      <div class="top-status">
+        <div class="top-battery">
+          <span class="battery-icon">🔋</span>
+          <div class="battery-bar-container">
+            <div id="battery-bar" class="battery-bar" style="width:100%"></div>
+          </div>
+          <span id="battery-text" class="battery-text">--</span>
+        </div>
+        <div class="top-tags">
+          <span id="face-detect-badge" class="status-tag tag-off">Face: OFF</span>
+          <span id="ground-badge" class="status-tag tag-ok">En suelo</span>
+        </div>
+      </div>
       <div id="connection-status" class="status-badge disconnected">
         <span class="dot"></span>
         <span class="label">Desconectado</span>
@@ -102,23 +115,8 @@
           </div>
         </div>
         <div class="servo-info">
-          <span>Pan: <strong id="servo-pan">90</strong>°</span>
-          <span>Tilt: <strong id="servo-tilt">90</strong>°</span>
-        </div>
-        <div class="battery-indicator">
-          <span class="battery-label">🔋 Batería</span>
-          <div class="battery-bar-container">
-            <div id="battery-bar" class="battery-bar" style="width:100%"></div>
-          </div>
-          <span id="battery-text" class="battery-text">--</span>
-        </div>
-        <div class="status-checks">
-          <div class="check-row">
-            <span id="face-detect-badge" class="badge off">👤 Face: OFF</span>
-          </div>
-          <div class="check-row">
-            <span id="ground-badge" class="badge ok">📐 En suelo</span>
-          </div>
+          <span>Pan <strong id="servo-pan">90</strong>°</span>
+          <span>Tilt <strong id="servo-tilt">90</strong>°</span>
         </div>
       </section>
     </div>

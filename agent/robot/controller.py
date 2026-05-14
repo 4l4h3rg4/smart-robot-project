@@ -186,21 +186,28 @@ class RobotController:
 
     def get_distance_cm(self) -> int:
         """Distancia del ultrasónico en cm. Devuelve 999 si no hay respuesta."""
-        resp = self.conn.send({"H": 1, "N": 21, "D1": 2})
-        if resp and resp.startswith("{") and "}" in resp:
-            # Respuesta típica: {1_XXXX} donde XXXX es la distancia
+        resp = self.conn.send({"H": "1", "N": 21, "D1": 2})
+        if not resp:
+            print("[DEBUG dist  ] send() retornó None/'' — timeout", flush=True)
+            return 999
+        print(f"[DEBUG dist  ] raw response: {resp!r}", flush=True)
+        if resp.startswith("{") and "}" in resp:
             try:
                 value = resp.strip("{}").split("_")[-1]
-                return int(value)
-            except (ValueError, IndexError):
-                pass
+                result = int(value)
+                print(f"[DEBUG dist  ] parsed: {result} cm", flush=True)
+                return result
+            except (ValueError, IndexError) as e:
+                print(f"[DEBUG dist  ] parse error: {e} | raw={resp!r}", flush=True)
+                return 999
+        print(f"[DEBUG dist  ] formato inesperado: {resp!r}", flush=True)
         return 999
 
     def get_ir_sensors(self) -> dict:
         """Lee los 3 sensores IR. Devuelve {'left': v, 'mid': v, 'right': v}."""
         result = {}
         for key, d1 in [("left", 0), ("mid", 1), ("right", 2)]:
-            resp = self.conn.send({"H": 1, "N": 22, "D1": d1})
+            resp = self.conn.send({"H": "1", "N": 22, "D1": d1})
             try:
                 value = resp.strip("{}").split("_")[-1] if resp else "0"
                 result[key] = int(value)
@@ -215,7 +222,7 @@ class RobotController:
 
     def is_lifted(self) -> bool:
         """Detecta si el robot fue levantado del suelo (N:23)."""
-        resp = self.conn.send({"H": 1, "N": 23})
+        resp = self.conn.send({"H": "1", "N": 23})
         if resp and "true" in resp.lower():
             return True
         return False

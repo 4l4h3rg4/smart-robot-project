@@ -234,7 +234,7 @@ def main() -> int:
         time.sleep(0.1)
         try: sock.recv(256)  # consumir respuesta heartbeat
         except: pass
-        cmd = json.dumps({"H": 1, "N": 23}, separators=(",", ":")).encode()
+        cmd = json.dumps({"H": "1", "N": 23}, separators=(",", ":")).encode()
         sock.send(cmd)
         time.sleep(0.3)
         try:
