@@ -1,7 +1,7 @@
 # ── Smart Robot Monitor ── Dockerfile ──
 # Multi-stage: build + runtime mínimo
 
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim-bookworm AS builder
 
 WORKDIR /app
 COPY pyproject.toml .
@@ -13,9 +13,10 @@ RUN pip install --no-cache-dir --user . && \
     find /root/.local -name "*.pyc" -delete
 
 # ── Runtime ──
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources && \
+    apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 && \
     rm -rf /var/lib/apt/lists/*
 
